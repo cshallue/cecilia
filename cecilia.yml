@@ -2,6 +2,7 @@ name: cecilia
 dependencies:
   - numpy
   - scipy
+  - scikit-learn
   - pandas
   - matplotlib
   - tensorflow
