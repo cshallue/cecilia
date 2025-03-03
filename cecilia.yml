@@ -1,0 +1,13 @@
+name: cecilia
+dependencies:
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - tensorflow
+  - jupyterlab
+  - scikit-learn
+  - pip
+  - pip:
+    - absl-py
+    - ml_collections
