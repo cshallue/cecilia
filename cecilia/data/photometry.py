@@ -1,10 +1,25 @@
+import os
 import re
 
 import pandas as pd
 
+_DATA_DIR = None
+
+
+def set_data_dir(data_dir):
+  global _DATA_DIR
+  _DATA_DIR = data_dir
+
+
+def read_raw_dataset(filename):
+  if _DATA_DIR is None:
+    raise ValueError("Must call set_data_dir() before reading data file.")
+
+  return pd.read_pickle(os.path.join(_DATA_DIR, filename))
+
 
 def read_and_process_dataset(filename, teff_choice='all', data_type='fP'):
-  df = pd.read_pickle(filename)
+  df = read_raw_dataset(filename)
   return process_dataset(df, teff_choice, data_type)
 
 
