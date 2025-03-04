@@ -3,9 +3,9 @@ import shutil
 
 import pandas as pd
 
-from . import evaluation, model_builder
+from . import evaluation, model_builder, preprocessing
 from .data import tf_dataset
-from .preprocessing import utils
+from .preprocessing import tf_transformers
 
 
 def train_model(config,
@@ -30,9 +30,9 @@ def train_model(config,
     f.write(config.to_json(indent=2))
 
   # Extract features and targets.
-  x_scaler, y_scaler = utils.create_scalers(config.log_transform_y,
-                                            config.normalize_y)
-  X_train, Y_train, X_test, Y_test = utils.extract_features_targets(
+  x_scaler, y_scaler = tf_transformers.create_scalers(config.log_transform_y,
+                                                      config.normalize_y)
+  X_train, Y_train, X_test, Y_test = preprocessing.extract_features_targets(
       train_df, test_df, X_cols, Y_cols, x_scaler=x_scaler, y_scaler=y_scaler)
 
   # Create batched dataset iterators.
