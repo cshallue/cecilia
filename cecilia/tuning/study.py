@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 from tensorboard.plugins.hparams import api as hp
 
-from . import training
+from cecilia import training
 
 TB_METRICS = {
     'loss': 'train_loss',

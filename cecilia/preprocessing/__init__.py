@@ -1,1 +1,1 @@
-from .utils import apply_scaler, extract_features_targets
+from cecilia.preprocessing.utils import apply_scaler, extract_features_targets

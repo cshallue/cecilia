@@ -3,9 +3,9 @@ import shutil
 
 import pandas as pd
 
-from . import evaluation, model_builder, preprocessing
-from .data import tf_dataset
-from .preprocessing import tf_transformers
+from cecilia import evaluation, model_builder, preprocessing
+from cecilia.data import tf_dataset
+from cecilia.preprocessing import tf_transformers
 
 
 def train_model(config,
