@@ -45,7 +45,7 @@ class LogTransformer(Transformer):
 
 class Normalizer(Transformer):
 
-  def __init__(self, invert):
+  def __init__(self, invert=False):
     super().__init__(invert)
     self.norm_layer = keras.layers.Normalization(invert=invert)
     self._is_fit = False
@@ -80,8 +80,8 @@ class Normalizer(Transformer):
 
 class TransformerPipeline(Transformer):
 
-  def __init__(self, layers):
-    super().__init__()
+  def __init__(self, layers, invert=False):
+    super().__init__(invert)
     self.layers = layers
 
   def build(self, input_shape):
