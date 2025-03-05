@@ -3,7 +3,7 @@ import shutil
 
 import pandas as pd
 
-from cecilia import evaluation, model_builder, preprocessing
+from cecilia import evaluation, photometric_model, preprocessing
 from cecilia.data import tf_dataset
 from cecilia.preprocessing import tf_transformers as transformers
 
@@ -30,11 +30,14 @@ def train_model(config,
     f.write(config.to_json(indent=2))
 
   # Extract features and targets.
-  x_scaler = transformers.Normalizer()
-  y_scaler = transformers.create_pipeline(log_transform=config.log_transform_y,
-                                          normalize=config.normalize_y)
   X_train, Y_train, X_test, Y_test = preprocessing.extract_features_targets(
-      train_df, test_df, X_cols, Y_cols, x_scaler=x_scaler, y_scaler=y_scaler)
+      train_df, test_df, X_cols, Y_cols)
+
+  # Build and compile model.
+  model = photometric_model.PhotometricModel(config)
+  model.x_transformer.fit(X_train)
+  model.y_transformer.fit(Y_train)
+  photometric_model.compile()
 
   # Create batched dataset iterators.
   train_dataset = tf_dataset.build(X_train,
@@ -46,8 +49,7 @@ def train_model(config,
                                   config.batch_size,
                                   shuffle=False)
 
-  # Build and train model.
-  model = model_builder.build_and_compile(config)
+  # Train model.
   print("Training model...")
   history = model.fit(train_dataset,
                       epochs=config.num_epochs,
@@ -66,8 +68,7 @@ def train_model(config,
   Y_pred_train = model.predict(X_train, batch_size=config.batch_size)
   Y_pred_test = model.predict(X_test, batch_size=config.batch_size)
   datasets = {"train": (Y_train, Y_pred_train), "test": (Y_test, Y_pred_test)}
-  eval_metrics = evaluation.calc_metrics_df(datasets=datasets,
-                                            y_scaler=y_scaler)
+  eval_metrics = evaluation.calc_metrics_df(datasets=datasets)
   for name, df in eval_metrics.items():
     df.to_csv(os.path.join(output_dir, f"metrics_{name}.csv"))
   print("Done evaluating model")
