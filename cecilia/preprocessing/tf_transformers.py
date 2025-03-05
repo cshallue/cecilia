@@ -4,6 +4,8 @@ import tensorflow as tf
 from tensorflow import keras
 
 
+# The invert parameter only changes the behavior of call().
+# It does not affect transform() or inverse_transform().
 class Transformer(keras.Layer):
 
   def __init__(self, invert=False):
@@ -47,22 +49,24 @@ class Normalizer(Transformer):
 
   def __init__(self, invert=False):
     super().__init__(invert)
-    self.norm_layer = keras.layers.Normalization(invert=invert)
+    # The Keras Normalization class also has an invert option, but we will set
+    # it explicitly each time we call the layer, so we do not set it here.
+    self._norm_layer = keras.layers.Normalization()
     self._is_fit = False
 
   @property
   def mean(self):
-    return self.norm_layer.mean
+    return self._norm_layer.mean
 
   @property
   def variance(self):
-    return self.norm_layer.variance
+    return self._norm_layer.variance
 
   def build(self, input_shape):
-    self.norm_layer.build(input_shape)
+    self._norm_layer.build(input_shape)
 
   def fit(self, data):
-    self.norm_layer.adapt(data)
+    self._norm_layer.adapt(data)
     self._is_fit = True
 
   @property
@@ -70,12 +74,12 @@ class Normalizer(Transformer):
     return self._is_fit
 
   def transform(self, data):
-    self.norm_layer.invert = False
-    return self.norm_layer(data)
+    self._norm_layer.invert = False
+    return self._norm_layer(data)
 
   def inverse_transform(self, data):
-    self.norm_layer.invert = True
-    return self.norm_layer(data)
+    self._norm_layer.invert = True
+    return self._norm_layer(data)
 
 
 class TransformerPipeline(Transformer):
@@ -112,10 +116,10 @@ class TransformerPipeline(Transformer):
 
 
 def create_pipeline(log_transform=False, normalize=True, invert=False):
-  scalers = []
+  transformers = []
   if log_transform:
-    scalers.append(LogTransformer(invert=invert))
+    transformers.append(LogTransformer())
   if normalize:
-    scalers.append(Normalizer(invert=invert))
+    transformers.append(Normalizer())
 
-  return TransformerPipeline(scalers)
+  return TransformerPipeline(transformers, invert=invert)
