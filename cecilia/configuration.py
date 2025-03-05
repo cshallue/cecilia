@@ -4,6 +4,7 @@ import ml_collections
 def default():
   return ml_collections.ConfigDict({
       # Data.
+      "normalize_x": True,
       "log_transform_y": False,
       "normalize_y": True,
       # Model.
