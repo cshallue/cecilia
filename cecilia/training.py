@@ -5,7 +5,7 @@ import pandas as pd
 
 from cecilia import evaluation, model_builder, preprocessing
 from cecilia.data import tf_dataset
-from cecilia.preprocessing import tf_transformers
+from cecilia.preprocessing import tf_transformers as transformers
 
 
 def train_model(config,
@@ -30,8 +30,9 @@ def train_model(config,
     f.write(config.to_json(indent=2))
 
   # Extract features and targets.
-  x_scaler, y_scaler = tf_transformers.create_scalers(config.log_transform_y,
-                                                      config.normalize_y)
+  x_scaler = transformers.Normalizer()
+  y_scaler = transformers.create_pipeline(log_transform=config.log_transform_y,
+                                          normalize=config.normalize_y)
   X_train, Y_train, X_test, Y_test = preprocessing.extract_features_targets(
       train_df, test_df, X_cols, Y_cols, x_scaler=x_scaler, y_scaler=y_scaler)
 

@@ -111,15 +111,11 @@ class TransformerPipeline(Transformer):
     return data
 
 
-def create_scalers(log_transform_y, normalize_y):
-  x_scaler = Normalizer()
+def create_pipeline(log_transform=False, normalize=True, invert=False):
+  scalers = []
+  if log_transform:
+    scalers.append(LogTransformer(invert=invert))
+  if normalize:
+    scalers.append(Normalizer(invert=invert))
 
-  y_scalers = []
-  if log_transform_y:
-    y_scalers.append(LogTransformer())
-  if normalize_y:
-    y_scalers.append(Normalizer())
-
-  y_scaler = TransformerPipeline(y_scalers)
-
-  return x_scaler, y_scaler
+  return TransformerPipeline(scalers)
