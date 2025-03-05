@@ -5,7 +5,7 @@ import pandas as pd
 
 from cecilia import evaluation, photometric_model, preprocessing
 from cecilia.data import tf_dataset
-from cecilia.preprocessing import tf_transformers as transformers
+from cecilia.preprocessing import transformers
 
 
 def train_model(config,

@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from cecilia import losses
-from cecilia.preprocessing import tf_transformers as transformers
+from cecilia.preprocessing import transformers
 
 
 class PhotometricModel(keras.Sequential):
