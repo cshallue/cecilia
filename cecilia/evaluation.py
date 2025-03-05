@@ -1,42 +1,32 @@
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 
+from cecilia import losses
 
-def calc_mean_squared_error(Y, Y_pred, axis=0):
-  return np.mean((Y - Y_pred)**2, axis=axis)
-
-
-def calc_RMSE(Y, Y_pred, axis=0):
-  return np.sqrt(calc_mean_squared_error(Y, Y_pred, axis=0))
-
-
-def calc_mean_abs_error(Y, Y_pred, axis=0):
-  return np.mean(np.abs(Y - Y_pred), axis=axis)
-
-
-def calc_mean_rel_error(Y, Y_pred, axis=0):
-  return np.mean(np.abs(Y_pred / Y - 1), axis=axis)
-
-
+# We don't call these "mean" error functions because we're not averaging over
+# the class dimension (we will estimate the per-class errors by averaging over
+# the batch dimension).
 DEFAULT_METRIC_FNS = {
-    "mean_squared_error": calc_mean_squared_error,
-    "mean_abs_error": calc_mean_abs_error,
-    "mean_rel_error": calc_mean_rel_error,
+    "squared_error": losses.squared_error,
+    "abs_error": losses.absolute_error,
+    "rel_error": losses.relative_error,
 }
 
 
 def calc_metrics(datasets, metric_fns=DEFAULT_METRIC_FNS, y_scaler=None):
   eval_metrics = {}
-  for dataset, (Y, Y_pred) in datasets.items():
+  for dataset, (y_true, y_pred) in datasets.items():
     # Go back to the unscaled values.
     if y_scaler is not None:
-      Y = y_scaler.inverse_transform(Y)
-      Y_pred = y_scaler.inverse_transform(Y_pred)
+      y_true = y_scaler.inverse_transform(y_true)
+      y_pred = y_scaler.inverse_transform(y_pred)
 
     print("Evaluating", dataset)
     values = {}
     for name, fn in metric_fns.items():
-      values[name] = fn(Y, Y_pred)
+      # Estimate the per-class errors by averaging over the batch dimension.
+      values[name] = tf.reduce_mean(fn(y_true, y_pred), axis=0).numpy()
       # Average over all output features so we have a single number.
       print(f"Average {name}: {np.mean(values[name]):.4g}")
     eval_metrics[dataset] = values
