@@ -1,4 +1,4 @@
-""" Similar to scipy preprocessing pipeline, but implemented in TensorFlow."""
+"""Preprocessing pipelines."""
 
 import tensorflow as tf
 from tensorflow import keras
@@ -8,8 +8,11 @@ from tensorflow import keras
 # It does not affect transform() or inverse_transform().
 class Transformer(keras.Layer):
 
-  def __init__(self, invert=False):
-    super().__init__()
+  def __init__(self, invert=False, **kwargs):
+    if kwargs.get("trainable"):
+      raise ValueError("Transformer layers are not trainable!")
+    kwargs["trainable"] = False
+    super().__init__(**kwargs)
     self.invert = invert
 
   def fit(self, data):
@@ -35,7 +38,15 @@ class Transformer(keras.Layer):
     self.fit(data)
     return self.transform(data)
 
+  def get_config(self):
+    config = super().get_config()
+    config.update({
+        "invert": self.invert,
+    })
+    return config
 
+
+@keras.utils.register_keras_serializable(package="transformers")
 class LogTransformer(Transformer):
 
   def transform(self, data):
@@ -45,10 +56,11 @@ class LogTransformer(Transformer):
     return tf.math.exp(data)
 
 
+@keras.utils.register_keras_serializable(package="transformers")
 class Normalizer(Transformer):
 
-  def __init__(self, invert=False):
-    super().__init__(invert)
+  def __init__(self, invert=False, **kwargs):
+    super().__init__(invert, **kwargs)
     # The Keras Normalization class also has an invert option, but we will set
     # it explicitly each time we call the layer, so we do not set it here.
     self._norm_layer = keras.layers.Normalization()
@@ -82,10 +94,11 @@ class Normalizer(Transformer):
     return self._norm_layer(data)
 
 
+@keras.utils.register_keras_serializable(package="transformers")
 class TransformerPipeline(Transformer):
 
-  def __init__(self, layers, invert=False):
-    super().__init__(invert)
+  def __init__(self, layers, invert=False, **kwargs):
+    super().__init__(invert, **kwargs)
     self.layers = layers
 
   def build(self, input_shape):
@@ -113,6 +126,23 @@ class TransformerPipeline(Transformer):
     for layer in self.layers[::-1]:
       data = layer.inverse_transform(data)
     return data
+
+  def get_config(self):
+    config = super().get_config()
+    config.update({
+        "layers":
+        [keras.utils.serialize_keras_object(layer) for layer in self.layers],
+    })
+    return config
+
+  @classmethod
+  def from_config(cls, config):
+    layer_configs = config.pop("layers")
+    layers = [
+        keras.utils.deserialize_keras_object(layer_config)
+        for layer_config in layer_configs
+    ]
+    return cls(layers, **config)
 
 
 def create_pipeline(log_transform=False, normalize=True, invert=False):
