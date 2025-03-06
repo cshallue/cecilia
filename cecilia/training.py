@@ -14,7 +14,7 @@ def train_model(config,
                 X_cols,
                 Y_cols,
                 output_dir,
-                eval_metrics=None,
+                run_eval=True,
                 save_model=True,
                 overwrite=False,
                 callbacks=None):
@@ -67,7 +67,7 @@ def train_model(config,
   print(f"Final train loss = {train_loss:.6g}")
   print(f"Final validation loss = {val_loss:.6g}")
 
-  if eval_metrics is None:
+  if not run_eval:
     return history_df
 
   # Evaluate the model.
