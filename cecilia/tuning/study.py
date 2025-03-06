@@ -8,15 +8,15 @@ from tensorboard.plugins.hparams import api as hp
 
 from cecilia import training
 
-TB_METRICS = {
+METRIC_LABELS = {
     'loss': 'train_loss',
     'val_loss': 'test_loss',
-    'train_mean_squared_error': 'train_MSE',
-    'test_mean_squared_error': 'test_MSE',
-    'train_mean_abs_error': 'train_MAE',
-    'test_mean_abs_error': 'test_MAE',
-    'train_mean_rel_error': 'train_MRE',
-    'test_mean_rel_error': 'test_MRE'
+    'train_squared_error': 'train_MSE',
+    'test_squared_error': 'test_MSE',
+    'train_abs_error': 'train_MAE',
+    'test_abs_error': 'test_MAE',
+    'train_rel_error': 'train_MRE',
+    'test_rel_error': 'test_MRE'
 }
 
 
@@ -47,7 +47,7 @@ def run_tuning_study(study_dir,
     hp.hparams_config(hparams=search_space.get_tensorboard_specs(),
                       metrics=[
                           hp.Metric(name, display_name=dname)
-                          for name, dname in TB_METRICS.items()
+                          for name, dname in METRIC_LABELS.items()
                       ])
 
   # Run trials.
@@ -71,7 +71,7 @@ def run_tuning_study(study_dir,
     print("Params:", config_updates)
 
     # Run the trial.
-    history, eval_metrics = training.train_model(config,
+    history, eval_results = training.train_model(config,
                                                  train_df,
                                                  test_df,
                                                  X_cols,
@@ -84,7 +84,7 @@ def run_tuning_study(study_dir,
       hp.hparams(trial_params,
                  trial_id=trial_id)  # record the values used in this trial
       _log_metrics_df(history)
-      for dataset, metrics_df in eval_metrics.items():
+      for dataset, metrics_df in eval_results.items():
         for metric in metrics_df.columns:
           epoch = config.num_epochs - 1
           avg_value = np.mean(metrics_df[metric])
