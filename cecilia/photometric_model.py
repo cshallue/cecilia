@@ -36,18 +36,40 @@ class PhotometricModel(keras.Sequential):
 
 
 def _get_loss_fn(model, config):
-  if config.normalize_y:
-    loss_cls = (losses.WeightedMeanSquaredLogError
-                if config.log_transform_y else losses.WeightedMeanSquaredError)
-    if not model.y_transformer.is_fit:
-      raise ValueError(
-          "Must call model.y_transformer.fit() before creating loss function")
-    class_weights = tf.divide(1.0, model.y_transformer.layers[-1].variance)
-    return loss_cls(class_weights)
+  # Unweighted loss functions.
 
-  loss_cls = (losses.MeanSquaredLogError
-              if config.log_transform_y else losses.MeanSquaredError)
-  return loss_cls()
+  if config.loss == "mean_squared_error":
+    return losses.MeanSquaredError()
+
+  if config.loss == "mean_squared_log_error":
+    return losses.MeanSquaredLogError()
+
+  if config.loss == "mean_absolute_error":
+    return losses.MeanAbsoluteError()
+
+  if config.loss == "mean_relative_error":
+    return losses.MeanRelativeError()
+
+  # Weighted loss functions.
+
+  if not config.normalize_y:
+    raise ValueError(f"loss='{config.loss}' requires normalize_y=True")
+
+  if not model.y_transformer.is_fit:
+    raise ValueError(
+        "Must call model.y_transformer.fit() before creating weighted loss")
+
+  y_normalizer = model.y_transformer.layers[-1]
+  assert isinstance(y_normalizer, transformers.Normalizer)
+  class_weights = tf.divide(1.0, y_normalizer.variance)
+
+  if config.loss == "weighted_mean_squared_error":
+    return losses.WeightedMeanSquaredError(class_weights)
+
+  if config.loss == "weighted_mean_squared_log_error":
+    return losses.WeightedMeanSquaredLogError(class_weights)
+
+  raise ValueError(f"Unrecognized loss function: {config.loss}")
 
 
 def compile(model, config):

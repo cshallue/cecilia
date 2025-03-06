@@ -14,8 +14,9 @@ def default():
       "hidden_activation": "relu",
       "dim_output": 16,
       # Training.
+      "loss": "weighted_mean_squared_error",
       "learning_rate": 1e-3,
       "momentum": 0.9,
-      "num_epochs": 5,
+      "num_epochs": 20,
       "batch_size": 512,
   })
