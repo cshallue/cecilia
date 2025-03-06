@@ -14,6 +14,7 @@ def train_model(config,
                 X_cols,
                 Y_cols,
                 output_dir,
+                eval_metrics=None,
                 save_model=True,
                 overwrite=False,
                 callbacks=None):
@@ -62,15 +63,21 @@ def train_model(config,
   # Save the train curve.
   history_df = pd.DataFrame(history.history)
   history_df.to_csv(os.path.join(output_dir, "train_curve.csv"))
+  train_loss, val_loss = history_df.iloc[-1][["loss", "val_loss"]]
+  print(f"Final train loss = {train_loss:.6g}")
+  print(f"Final validation loss = {val_loss:.6g}")
+
+  if eval_metrics is None:
+    return history_df
 
   # Evaluate the model.
   print("Evaluating model...")
   Y_pred_train = model.predict(X_train, batch_size=config.batch_size)
   Y_pred_test = model.predict(X_test, batch_size=config.batch_size)
   datasets = {"train": (Y_train, Y_pred_train), "test": (Y_test, Y_pred_test)}
-  eval_metrics = evaluation.calc_metrics_df(datasets=datasets)
-  for name, df in eval_metrics.items():
+  eval_results = evaluation.calc_metrics_df(datasets=datasets)
+  for name, df in eval_results.items():
     df.to_csv(os.path.join(output_dir, f"metrics_{name}.csv"))
   print("Done evaluating model")
 
-  return history_df, eval_metrics
+  return history_df, eval_results
