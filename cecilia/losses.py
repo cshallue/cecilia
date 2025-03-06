@@ -28,7 +28,7 @@ def absolute_error(y_true, y_pred):
 
 def relative_error(y_true, y_pred):
   y_true, y_pred = _convert_to_tensors(y_true, y_pred)
-  return tf.abs(y_true / y_pred - 1)
+  return tf.abs(y_pred / y_true - 1)
 
 
 def _mean_error_fn(error_fn, axis=-1):
