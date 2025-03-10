@@ -4,9 +4,18 @@ import tensorflow as tf
 from tensorflow import keras
 
 
+def _validate_tensor_or_distribution(data):
+  if isinstance(data, dict):
+    if set(data.keys()) != {"distribution", "loc", "scale"}:
+      raise ValueError("Keys should be 'distribution', 'loc', 'scale'")
+    return data.copy()  # Shallow copy.
+
+  return tf.convert_to_tensor(data)
+
+
 # The invert parameter only changes the behavior of call().
 # It does not affect transform() or inverse_transform().
-class Transformer(keras.Layer):
+class Transformer(keras.layers.Layer):
 
   def __init__(self, invert=False, **kwargs):
     if kwargs.get("trainable"):
@@ -50,9 +59,25 @@ class Transformer(keras.Layer):
 class LogTransformer(Transformer):
 
   def transform(self, data):
+    data = _validate_tensor_or_distribution(data)
+
+    if isinstance(data, dict):
+      if data["distribution"] != "LogNormal":
+        raise ValueError("Can only log transform a LogNormal distribution")
+      data["distribution"] = "Normal"  # LogNormal -> Normal
+      return data
+
     return tf.math.log(data)
 
   def inverse_transform(self, data):
+    data = _validate_tensor_or_distribution(data)
+
+    if isinstance(data, dict):
+      if data["distribution"] != "Normal":
+        raise ValueError("Can only exponentiate a Normal distribution")
+      data["distribution"] = "LogNormal"  # Normal -> LogNormal
+      return data
+
     return tf.math.exp(data)
 
 
@@ -86,11 +111,29 @@ class Normalizer(Transformer):
     return self._is_fit
 
   def transform(self, data):
+    data = _validate_tensor_or_distribution(data)
     self._norm_layer.invert = False
+
+    if isinstance(data, dict):
+      if data["distribution"] != "Normal":
+        raise ValueError("Can only normalize a Normal distribution")
+      data["loc"] = self._norm_layer(data["loc"])
+      data["scale"] = data["scale"] / self.variance
+      return data
+
     return self._norm_layer(data)
 
   def inverse_transform(self, data):
+    data = _validate_tensor_or_distribution(data)
     self._norm_layer.invert = True
+
+    if isinstance(data, dict):
+      if data["distribution"] != "Normal":
+        raise ValueError("Can only un-normalize a Normal distribution")
+      data["loc"] = self._norm_layer(data["loc"])
+      data["scale"] = data["scale"] * self.variance
+      return data
+
     return self._norm_layer(data)
 
 
