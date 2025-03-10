@@ -1,8 +1,10 @@
 """Utilities for dealing with input and output distributions."""
 
+import tensorflow as tf
+
 # Enums that identify different distributions.
-NORMAL = 0
-LOG_NORMAL = 1
+NORMAL = tf.constant(0, dtype=tf.int32)
+LOG_NORMAL = tf.constant(1, dtype=tf.int32)
 
 
 def get_name(dist_key):
