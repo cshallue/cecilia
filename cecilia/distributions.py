@@ -1,4 +1,4 @@
-"""Utilities for dealing with input and output distributions."""
+"""Utilities for dealing with probability distributions."""
 
 import tensorflow as tf
 
