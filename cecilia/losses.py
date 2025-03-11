@@ -1,11 +1,29 @@
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow_probability import distributions as tfd
 
 
 def _convert_to_tensors(y_true, y_pred):
   y_pred = tf.convert_to_tensor(y_pred)
   y_true = tf.convert_to_tensor(y_true, dtype=y_pred.dtype)
   return y_true, y_pred
+
+
+# ==== Log likelihood loss functions ====
+
+
+class NormalLogLikelihood(keras.losses.Loss):
+
+  def call(self, y_true, y_pred):
+    dist = tfd.Normal(loc=y_pred["loc"], scale=y_pred["scale"])
+    return -dist.log_prob(y_true)
+
+
+class LogNormalLogLikelihood(keras.losses.Loss):
+
+  def call(self, y_true, y_pred):
+    dist = tfd.LogNormal(loc=y_pred["loc"], scale=y_pred["scale"])
+    return -dist.log_prob(y_true)
 
 
 # ==== Unweighted loss functions ====
