@@ -6,6 +6,15 @@ from tensorflow import keras
 from cecilia import distributions
 
 
+def _prepare_dist_transform(dist, expected_name):
+  distributions.validate(dist)
+  name = distributions.get_name(dist)
+  if name not in {"Symbolic", expected_name}:
+    raise ValueError(
+        f"Expected distribution type '{expected_name}', got '{name}'")
+  return dist.copy()  # Shallow copy
+
+
 # The invert parameter only changes the behavior of call().
 # It does not affect transform() or inverse_transform().
 class Transformer(keras.layers.Layer):
@@ -53,9 +62,7 @@ class LogTransformer(Transformer):
 
   def transform(self, data):
     if distributions.is_distribution(data):
-      data = distributions.validate(data, copy=True)
-      if data["distribution"] != distributions.LOG_NORMAL:
-        raise ValueError("Can only log transform a LogNormal distribution")
+      data = _prepare_dist_transform(data, "LogNormal")
       data["distribution"] = distributions.NORMAL  # LogNormal -> Normal
       return data
 
@@ -63,9 +70,7 @@ class LogTransformer(Transformer):
 
   def inverse_transform(self, data):
     if distributions.is_distribution(data):
-      data = distributions.validate(data, copy=True)
-      if data["distribution"] != distributions.NORMAL:
-        raise ValueError("Can only exponentiate a Normal distribution")
+      data = _prepare_dist_transform(data, "Normal")
       data["distribution"] = distributions.LOG_NORMAL  # Normal -> LogNormal
       return data
 
@@ -91,6 +96,8 @@ class Normalizer(Transformer):
     return self._norm_layer.variance
 
   def build(self, input_shape):
+    if distributions.is_distribution(input_shape):
+      input_shape = input_shape["loc"]
     self._norm_layer.build(input_shape)
 
   def fit(self, data):
@@ -104,9 +111,7 @@ class Normalizer(Transformer):
   def transform(self, data):
     self._norm_layer.invert = False
     if distributions.is_distribution(data):
-      data = distributions.validate(data, copy=True)
-      if data["distribution"] != distributions.NORMAL:
-        raise ValueError("Can only normalize a Normal distribution")
+      data = _prepare_dist_transform(data, "Normal")
       data["loc"] = self._norm_layer(data["loc"])
       data["scale"] = data["scale"] / tf.sqrt(self.variance)
       return data
@@ -116,9 +121,7 @@ class Normalizer(Transformer):
   def inverse_transform(self, data):
     self._norm_layer.invert = True
     if distributions.is_distribution(data):
-      data = distributions.validate(data, copy=True)
-      if data["distribution"] != distributions.NORMAL:
-        raise ValueError("Can only un-normalize a Normal distribution")
+      data = _prepare_dist_transform(data, "Normal")
       data["loc"] = self._norm_layer(data["loc"])
       data["scale"] = data["scale"] * tf.sqrt(self.variance)
       return data
