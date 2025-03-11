@@ -24,8 +24,6 @@ def validate(dist, copy=False):
   if set(dist.keys()) != {"distribution", "loc", "scale"}:
     raise ValueError("Keys should be 'distribution', 'loc', 'scale'")
 
-  _ = get_name(dist["distribution"])  # Validate key.
-
   if copy:
     dist = dist.copy()  # Shallow copy
 
