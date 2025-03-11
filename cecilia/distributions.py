@@ -35,5 +35,3 @@ def validate(dist):
   if set(dist.keys()) != {"distribution", "loc", "scale"}:
     raise ValueError(
         "Distribution keys should be {'distribution', 'loc', 'scale'}")
-
-  _ = get_name(dist)  # Validate key.
