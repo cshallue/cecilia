@@ -82,7 +82,7 @@ class PhotometricModel(keras.Model):
         fc_layers.append(ConstantScale(config.constant_std))
       elif config.predict_std_method == "per_class":
         fc_layers.append(LearnedScale())
-      elif config.predict_std_method:
+      elif config.predict_std_method not in {"", "none"}:
         raise ValueError(config.predict_std_method)
 
     # Output transformer.
