@@ -1,7 +1,6 @@
 """Utilities for dealing with probability distributions."""
 
 import tensorflow as tf
-from tensorflow import keras
 
 # Enums that identify different distributions.
 NORMAL = tf.constant(0, dtype=tf.int32)
@@ -12,14 +11,14 @@ def is_distribution(dist):
   return isinstance(dist, dict) and "distribution" in dist
 
 
-# Identify dummy distributions used when building model layers.
-def is_dummy(dist):
-  return isinstance(dist["distribution"], keras.KerasTensor)
+# Identify symbolic distributions used when building model layers.
+def is_symbolic(dist):
+  return tf.is_symbolic_tensor(dist["distribution"])
 
 
 def get_name(dist):
-  if is_dummy(dist):
-    return "Dummy"
+  if is_symbolic(dist):
+    return "Symbolic"
 
   key = dist["distribution"]
 
