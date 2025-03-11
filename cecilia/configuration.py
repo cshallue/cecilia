@@ -13,6 +13,8 @@ def default():
       "dim_hidden": 1024,
       "hidden_activation": "relu",
       "dim_output": 16,
+      "predict_std_method": "",
+      "constant_std": 1.0,
       # Training.
       "loss": "weighted_mean_squared_error",
       "learning_rate": 1e-3,
