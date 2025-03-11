@@ -82,7 +82,7 @@ class PhotometricModel(keras.Model):
         fc_layers.append(ConstantScale(config.constant_std))
       elif config.predict_std_method == "per_class":
         fc_layers.append(LearnedScale())
-      elif config.predict_std_method not in {"", "none"}:
+      elif config.predict_std_method != "none":
         raise ValueError(config.predict_std_method)
 
     # Output transformer.
@@ -107,7 +107,9 @@ class PhotometricModel(keras.Model):
 
 
 def _get_loss_fn(model, config):
-  if config.predict_std_method != (config.loss == "log_likelihood"):
+
+  predicts_distribution = (config.predict_std_method != "none")
+  if predicts_distribution != (config.loss == "log_likelihood"):
     raise ValueError(
         "Must have loss='log_likelihood' iff predicting a distribution")
 
