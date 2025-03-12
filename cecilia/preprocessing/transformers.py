@@ -6,13 +6,12 @@ from tensorflow import keras
 from cecilia import distributions
 
 
-def _prepare_dist_transform(dist, expected_name):
-  distributions.validate(dist)
-  name = distributions.get_name(dist)
-  if name not in {"Symbolic", expected_name}:
-    raise ValueError(
-        f"Expected distribution type '{expected_name}', got '{name}'")
-  return dist.copy()  # Shallow copy
+def transform_dist(dist, old_name, new_name):
+  distributions.validate(dist, old_name)
+  return {
+      f"{new_name}_{param}": dist[f"{old_name}_{param}"]
+      for param in ["loc", "scale"]
+  }
 
 
 # The invert parameter only changes the behavior of call().
@@ -62,17 +61,13 @@ class LogTransformer(Transformer):
 
   def transform(self, data):
     if distributions.is_distribution(data):
-      data = _prepare_dist_transform(data, "LogNormal")
-      data["distribution"] = distributions.NORMAL  # LogNormal -> Normal
-      return data
+      return transform_dist(data, "LogNormal", "Normal")  # LogNormal -> Normal
 
     return tf.math.log(data)
 
   def inverse_transform(self, data):
     if distributions.is_distribution(data):
-      data = _prepare_dist_transform(data, "Normal")
-      data["distribution"] = distributions.LOG_NORMAL  # Normal -> LogNormal
-      return data
+      return transform_dist(data, "Normal", "LogNormal")  # Normal -> LogNormal
 
     return tf.math.exp(data)
 
@@ -111,9 +106,9 @@ class Normalizer(Transformer):
   def transform(self, data):
     self._norm_layer.invert = False
     if distributions.is_distribution(data):
-      data = _prepare_dist_transform(data, "Normal")
-      data["loc"] = self._norm_layer(data["loc"])
-      data["scale"] = data["scale"] / tf.sqrt(self.variance)
+      data = transform_dist(data, "Normal", "Normal")
+      data["Normal_loc"] = self._norm_layer(data["Normal_loc"])
+      data["Normal_scale"] = data["Normal_scale"] / tf.sqrt(self.variance)
       return data
 
     return self._norm_layer(data)
@@ -121,9 +116,9 @@ class Normalizer(Transformer):
   def inverse_transform(self, data):
     self._norm_layer.invert = True
     if distributions.is_distribution(data):
-      data = _prepare_dist_transform(data, "Normal")
-      data["loc"] = self._norm_layer(data["loc"])
-      data["scale"] = data["scale"] * tf.sqrt(self.variance)
+      data = transform_dist(data, "Normal", "Normal")
+      data["Normal_loc"] = self._norm_layer(data["Normal_loc"])
+      data["Normal_scale"] = data["Normal_scale"] * tf.sqrt(self.variance)
       return data
 
     return self._norm_layer(data)

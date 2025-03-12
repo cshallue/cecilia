@@ -15,14 +15,15 @@ def _convert_to_tensors(y_true, y_pred):
 class NormalLogLikelihood(keras.losses.Loss):
 
   def call(self, y_true, y_pred):
-    dist = tfd.Normal(loc=y_pred["loc"], scale=y_pred["scale"])
+    dist = tfd.Normal(loc=y_pred["Normal_loc"], scale=y_pred["Normal_scale"])
     return -dist.log_prob(y_true)
 
 
 class LogNormalLogLikelihood(keras.losses.Loss):
 
   def call(self, y_true, y_pred):
-    dist = tfd.LogNormal(loc=y_pred["loc"], scale=y_pred["scale"])
+    dist = tfd.LogNormal(loc=y_pred["LogNormal_loc"],
+                         scale=y_pred["LogNormal_scale"])
     return -dist.log_prob(y_true)
 
 
