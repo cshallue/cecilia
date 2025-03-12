@@ -65,6 +65,8 @@ class PhotometricModel(keras.Model):
 
   def __init__(self, config, **kwargs):
     super().__init__(**kwargs)
+    self.config = config
+
     # Input transformer.
     x_transformer = transformers.create_pipeline(normalize=config.normalize_x)
 
@@ -98,6 +100,7 @@ class PhotometricModel(keras.Model):
     # We know the input dimension so we might as well build now.
     input_layer = keras.Input(shape=(config.dim_input, ))
     self.call(input_layer)
+    self.loss_fn = None
 
   def call(self, inputs):
     x = self.x_transformer(inputs)
@@ -105,62 +108,85 @@ class PhotometricModel(keras.Model):
       x = layer(x)
     return self.y_transformer(x)
 
+  def compute_loss(
+      self,
+      x=None,
+      y=None,
+      y_pred=None,
+      sample_weight=None,
+      training=True,
+  ):
+    # x and training arguments are unused.
+    del x
+    del training
 
-def _get_loss_fn(model, config):
+    if self.loss_fn is None:
+      raise ValueError("Must call compile() before compute_loss()")
 
-  predicts_distribution = (config.predict_std_method != "none")
-  if predicts_distribution != (config.loss == "log_likelihood"):
-    raise ValueError(
-        "Must have loss='log_likelihood' iff predicting a distribution")
+    losses = [self.loss_fn(y, y_pred, sample_weight)]
+    for loss in self.losses:
+      losses.append(self._aggregate_additional_loss(loss))
 
-  # Log likelihood loss function.
-  if config.loss == "log_likelihood":
-    if config.log_transform_y:
-      return losses.LogNormalLogLikelihood()
-    return losses.NormalLogLikelihood()
+    return losses[0] if len(losses) == 1 else tf.sum(losses)
 
-  # Unweighted loss functions.
+  def _build_loss_fn(self):
+    loss_name = self.config.loss
 
-  if config.loss == "mean_squared_error":
-    return losses.MeanSquaredError()
+    predicts_distribution = (self.config.predict_std_method != "none")
+    if predicts_distribution != (loss_name == "log_likelihood"):
+      raise ValueError(
+          "Must have loss='log_likelihood' iff predicting a distribution")
 
-  if config.loss == "mean_squared_log_error":
-    return losses.MeanSquaredLogError()
+    # Log likelihood loss function.
+    if loss_name == "log_likelihood":
+      if self.config.log_transform_y:
+        return losses.LogNormalLogLikelihood()
+      return losses.NormalLogLikelihood()
 
-  if config.loss == "mean_absolute_error":
-    return losses.MeanAbsoluteError()
+    # Unweighted loss functions.
 
-  if config.loss == "mean_relative_error":
-    return losses.MeanRelativeError()
+    if loss_name == "mean_squared_error":
+      return losses.MeanSquaredError()
 
-  # Weighted loss functions.
+    if loss_name == "mean_squared_log_error":
+      return losses.MeanSquaredLogError()
 
-  if not config.normalize_y:
-    raise ValueError(f"loss='{config.loss}' requires normalize_y=True")
+    if loss_name == "mean_absolute_error":
+      return losses.MeanAbsoluteError()
 
-  if not model.y_transformer.is_fit:
-    raise ValueError(
-        "Must call model.y_transformer.fit() before creating weighted loss")
+    if loss_name == "mean_relative_error":
+      return losses.MeanRelativeError()
 
-  y_normalizer = model.y_transformer.layers[-1]
-  assert isinstance(y_normalizer, transformers.Normalizer)
-  class_weights = tf.divide(1.0, y_normalizer.variance)
+    # Weighted loss functions.
 
-  if config.loss == "weighted_mean_squared_error":
-    return losses.WeightedMeanSquaredError(class_weights)
+    if not self.config.normalize_y:
+      raise ValueError(f"loss='{loss_name}' requires normalize_y=True")
 
-  if config.loss == "weighted_mean_squared_log_error":
-    return losses.WeightedMeanSquaredLogError(class_weights)
+    if not self.y_transformer.is_fit:
+      raise ValueError(
+          "Must call y_transformer.fit() before creating weighted loss")
 
-  raise ValueError(f"Unrecognized loss function: {config.loss}")
+    y_normalizer = self.y_transformer.layers[-1]
+    assert isinstance(y_normalizer, transformers.Normalizer)
+    class_weights = tf.divide(1.0, y_normalizer.variance)
 
+    if loss_name == "weighted_mean_squared_error":
+      return losses.WeightedMeanSquaredError(class_weights)
 
-def compile(model, config):
-  lr = config.learning_rate
-  momentum = config.momentum
-  optimizer = keras.optimizers.SGD(learning_rate=lr, momentum=momentum)
-  loss_fn = _get_loss_fn(model, config)
-  model.compile(optimizer=optimizer, loss=loss_fn)
+    if loss_name == "weighted_mean_squared_log_error":
+      return losses.WeightedMeanSquaredLogError(class_weights)
+
+    raise ValueError(f"Unrecognized loss function: {loss_name}")
+
+  def compile(self, **kwargs):
+    # Build the loss function
+    self.loss_fn = self._build_loss_fn()
+
+    # Build the optimizer.
+    lr = self.config.learning_rate
+    momentum = self.config.momentum
+    optimizer = keras.optimizers.SGD(learning_rate=lr, momentum=momentum)
+    super().compile(optimizer=optimizer, **kwargs)
 
 
 def load(model_dir):
