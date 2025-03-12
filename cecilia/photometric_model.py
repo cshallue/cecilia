@@ -26,7 +26,7 @@ class ConstantScale(keras.layers.Layer):
 
   def call(self, loc):
     scale = _broadcast_scale(self.scale, loc)
-    return {"distribution": distributions.NORMAL, "loc": loc, "scale": scale}
+    return {"Normal_loc": loc, "Normal_scale": scale}
 
 
 class LearnedScale(keras.layers.Layer):
@@ -42,7 +42,7 @@ class LearnedScale(keras.layers.Layer):
 
   def call(self, loc):
     scale = _broadcast_scale(tf.math.softplus(self._scale_params), loc)
-    return {"distribution": distributions.NORMAL, "loc": loc, "scale": scale}
+    return {"Normal_loc": loc, "Normal_scale": scale}
 
 
 class DenseLocScale(keras.layers.Layer):
@@ -58,7 +58,7 @@ class DenseLocScale(keras.layers.Layer):
     loc_scale = self._dense.call(input)
     loc, scale = tf.split(loc_scale, 2, axis=-1)
     scale = tf.math.softplus(scale)
-    return {"distribution": distributions.NORMAL, "loc": loc, "scale": scale}
+    return {"Normal_loc": loc, "Normal_scale": scale}
 
 
 class PhotometricModel(keras.Model):

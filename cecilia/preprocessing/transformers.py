@@ -92,7 +92,7 @@ class Normalizer(Transformer):
 
   def build(self, input_shape):
     if distributions.is_distribution(input_shape):
-      input_shape = input_shape["loc"]
+      input_shape = input_shape["Normal_loc"]
     self._norm_layer.build(input_shape)
 
   def fit(self, data):
