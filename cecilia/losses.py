@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow_probability import distributions as tfd
+
+from cecilia import distributions
 
 
 def _convert_to_tensors(y_true, y_pred):
@@ -9,21 +10,13 @@ def _convert_to_tensors(y_true, y_pred):
   return y_true, y_pred
 
 
-# ==== Log likelihood loss functions ====
+# ==== Log likelihood loss function ====
 
 
-class NormalLogLikelihood(keras.losses.Loss):
-
-  def call(self, y_true, y_pred):
-    dist = tfd.Normal(loc=y_pred["Normal_loc"], scale=y_pred["Normal_scale"])
-    return -dist.log_prob(y_true)
-
-
-class LogNormalLogLikelihood(keras.losses.Loss):
+class LogLikelihood(keras.losses.Loss):
 
   def call(self, y_true, y_pred):
-    dist = tfd.LogNormal(loc=y_pred["LogNormal_loc"],
-                         scale=y_pred["LogNormal_scale"])
+    dist = distributions.to_tensorflow_distribution(y_pred)
     return -dist.log_prob(y_true)
 
 

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from cecilia import losses
+from cecilia import distributions, losses
 
 # We don't call these "mean" error functions because we're not averaging over
 # the class dimension (we will estimate the per-class errors by averaging over
@@ -21,6 +21,10 @@ def calc_metrics(datasets, metric_fns=DEFAULT_METRIC_FNS, y_scaler=None):
     if y_scaler is not None:
       y_true = y_scaler.inverse_transform(y_true)
       y_pred = y_scaler.inverse_transform(y_pred)
+
+    if distributions.is_distribution(y_pred):
+      dist = distributions.to_tensorflow_distribution(y_pred)
+      y_pred = dist.mean()
 
     print("Evaluating", dataset)
     values = {}

@@ -130,9 +130,7 @@ class PhotometricModel(keras.Model):
 
     # Log likelihood loss function.
     if loss_name == "log_likelihood":
-      if self.config.log_transform_y:
-        return losses.LogNormalLogLikelihood()
-      return losses.NormalLogLikelihood()
+      return losses.LogLikelihood()
 
     # Unweighted loss functions.
 

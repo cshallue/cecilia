@@ -1,5 +1,7 @@
 """Utilities for dealing with probability distributions."""
 
+from tensorflow_probability import distributions as tfd
+
 NAMES = ["Normal", "LogNormal"]
 
 
@@ -34,3 +36,18 @@ def validate(dist, expected_name=None):
   if expected_name and dist_name != expected_name:
     raise ValueError(
         f"Expected '{expected_name}' distribution, got '{dist_name}'")
+
+  return dist_name
+
+
+def to_tensorflow_distribution(dist):
+  dist_name = validate(dist)
+
+  if dist_name == "Normal":
+    return tfd.Normal(loc=dist["Normal_loc"], scale=dist["Normal_scale"])
+
+  if dist_name == "LogNormal":
+    return tfd.LogNormal(loc=dist["LogNormal_loc"],
+                         scale=dist["LogNormal_scale"])
+
+  raise ValueError(dist_name)
