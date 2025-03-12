@@ -5,17 +5,8 @@ import ml_collections
 import tensorflow as tf
 from tensorflow import keras
 
-from cecilia import distributions, losses
+from cecilia import losses
 from cecilia.preprocessing import transformers
-
-
-def _broadcast_scale(scale, loc):
-  if tf.is_symbolic_tensor(loc):
-    # Placeholder used when building the model. Return a placeholder with the
-    # same shape and dtype.
-    return keras.KerasTensor(shape=loc.shape, dtype=loc.dtype)
-
-  return tf.broadcast_to(scale, loc.shape)
 
 
 class ConstantScale(keras.layers.Layer):
@@ -25,7 +16,7 @@ class ConstantScale(keras.layers.Layer):
     self.scale = tf.convert_to_tensor(scale, dtype=tf.float32)
 
   def call(self, loc):
-    scale = _broadcast_scale(self.scale, loc)
+    scale = tf.broadcast_to(self.scale, tf.shape(loc))
     return {"Normal_loc": loc, "Normal_scale": scale}
 
 
@@ -41,7 +32,7 @@ class LearnedScale(keras.layers.Layer):
     )
 
   def call(self, loc):
-    scale = _broadcast_scale(tf.math.softplus(self._scale_params), loc)
+    scale = tf.broadcast_to(self.scale, tf.shape(loc))
     return {"Normal_loc": loc, "Normal_scale": scale}
 
 
