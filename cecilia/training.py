@@ -38,7 +38,7 @@ def train_model(config,
   model = photometric_model.PhotometricModel(config)
   model.x_transformer.fit(X_train)
   model.y_transformer.fit(Y_train)
-  photometric_model.compile(model, config)
+  model.compile(model)
 
   # Create batched dataset iterators.
   train_dataset = tf_dataset.build(X_train,
