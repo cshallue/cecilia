@@ -1,4 +1,5 @@
 import json
+import math
 import os
 
 import ml_collections
@@ -133,25 +134,34 @@ class PhotometricModel(keras.Model):
           "Must have loss='log_likelihood' iff predicting a distribution")
 
     # Loss rescaling.
+    shift = self.config.loss_shift or None
     rescale = None
+    y_normalizer = self._get_y_normalizer()
     if self.config.loss_rescaling_method == 'constant':
       rescale = self.config.loss_rescaling_value
     elif self.config.loss_rescaling_method == 'per_class_variance':
-      y_normalizer = self._get_y_normalizer()
       if y_normalizer is None:
         raise ValueError("loss_rescaling_method='per_class_variance' requires "
                          "normalize_y=True")
       rescale = tf.divide(1.0, y_normalizer.variance)
+    elif self.config.loss_rescaling_method == 'log_likelihood_rescaling':
+      # There is a factor of 1/2 in the log likelihood that is not included in
+      # the squared error. So rescale by a factor of 2.
+      rescale = 2.0
+      # Shift away constant factors.
+      if shift:
+        raise ValueError("loss_shift cannot be used in conjunction with "
+                         "log_likelihood_rescaling")
+      shift = -tf.math.log(2 * math.pi)
+      if y_normalizer is not None:
+        shift -= tf.reduce_mean(tf.math.log(y_normalizer.variance))
     elif self.config.loss_rescaling_method != "none":
       raise ValueError(self.config.loss_rescaling_method)
-
-    # Loss shifting.
-    shift = self.config.loss_shift or None
 
     # Create loss function.
 
     if loss_name == "log_likelihood":
-      return losses.LogLikelihood()
+      return losses.LogLikelihood(rescale=rescale, shift=shift)
 
     if loss_name == "mean_squared_error":
       return losses.MeanSquaredError(rescale=rescale, shift=shift)
