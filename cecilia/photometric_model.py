@@ -199,8 +199,8 @@ def load(model_dir):
 
   model = PhotometricModel(config)
 
-  model_filename = os.path.join(model_dir, "model.keras")
-  model.load_weights(model_filename)
-  print(f"Loaded weights from {model_filename}")
+  weights_filename = os.path.join(model_dir, "model.weights.h5")
+  model.load_weights(weights_filename)
+  print(f"Loaded weights from {weights_filename}")
 
   return config, model

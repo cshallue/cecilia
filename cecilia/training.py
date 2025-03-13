@@ -5,7 +5,6 @@ import pandas as pd
 
 from cecilia import evaluation, photometric_model, preprocessing
 from cecilia.data import tf_dataset
-from cecilia.preprocessing import transformers
 
 
 def train_model(config,
@@ -57,7 +56,7 @@ def train_model(config,
                       validation_data=test_dataset,
                       callbacks=callbacks)
   if save_model:
-    model.save(os.path.join(output_dir, "model.keras"))
+    model.save_weights(os.path.join(output_dir, "model.weights.h5"))
   print("Done training model")
 
   # Save the train curve.
