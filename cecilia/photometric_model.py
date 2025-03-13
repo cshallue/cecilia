@@ -91,9 +91,13 @@ class PhotometricModel(keras.Model):
     self.y_transformer = y_transformer
 
     # We know the input dimension so we might as well build now.
-    input_layer = keras.Input(shape=(config.dim_input, ))
-    self.call(input_layer)
+    self.build(input_shape=(None, config.dim_input))
     self.loss_fn = None
+
+  def build(self, input_shape):
+    input_layer = keras.Input(shape=(input_shape[-1], ))
+    self.call(input_layer)  # Builds all the layers.
+    self.built = True
 
   def call(self, inputs):
     x = self.x_transformer(inputs)
