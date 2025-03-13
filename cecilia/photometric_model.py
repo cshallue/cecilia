@@ -134,11 +134,13 @@ class PhotometricModel(keras.Model):
 
     # Loss rescaling.
     rescale = None
-    if self.config.loss_rescaling_method == 'per_class':
+    if self.config.loss_rescaling_method == 'constant':
+      rescale = self.config.loss_rescaling_value
+    elif self.config.loss_rescaling_method == 'per_class_variance':
       y_normalizer = self._get_y_normalizer()
       if y_normalizer is None:
-        raise ValueError(
-            "loss_rescaling_method='per_class' requires normalize_y=True")
+        raise ValueError("loss_rescaling_method='per_class_variance' requires "
+                         "normalize_y=True")
       rescale = tf.divide(1.0, y_normalizer.variance)
     elif self.config.loss_rescaling_method != "none":
       raise ValueError(self.config.loss_rescaling_method)

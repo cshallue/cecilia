@@ -18,8 +18,8 @@ def default():
       # Training.
       "loss": "mean_squared_error",
       "loss_rescaling_method": "none",
-      "loss_rescaling_value": 1.0,
-      "loss_shift": 0.0,
+      "loss_rescaling_value": [],
+      "loss_shift": [],
       "learning_rate": 1e-3,
       "momentum": 0.9,
       "num_epochs": 20,
