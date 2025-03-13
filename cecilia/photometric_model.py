@@ -72,7 +72,7 @@ class PhotometricModel(keras.Model):
     else:
       fc_layers.append(keras.layers.Dense(config.dim_output))
       if config.predict_std_method == "constant":
-        fc_layers.append(ConstantScale(config.constant_std))
+        fc_layers.append(ConstantScale(config.predict_constant_std_value))
       elif config.predict_std_method == "per_class":
         fc_layers.append(LearnedScale())
       elif config.predict_std_method != "none":
@@ -120,50 +120,48 @@ class PhotometricModel(keras.Model):
 
     return losses[0] if len(losses) == 1 else tf.sum(losses)
 
+  def _get_y_normalizer(self):
+    y_tr_layers = self.y_transformer.layers
+    if y_tr_layers and isinstance(y_tr_layers[-1], transformers.Normalizer):
+      return y_tr_layers[-1]
+
   def _build_loss_fn(self):
     loss_name = self.config.loss
-
     predicts_distribution = (self.config.predict_std_method != "none")
     if predicts_distribution != (loss_name == "log_likelihood"):
       raise ValueError(
           "Must have loss='log_likelihood' iff predicting a distribution")
 
-    # Log likelihood loss function.
+    # Loss rescaling.
+    rescale = None
+    if self.config.loss_rescaling_method == 'per_class':
+      y_normalizer = self._get_y_normalizer()
+      if y_normalizer is None:
+        raise ValueError(
+            "loss_rescaling_method='per_class' requires normalize_y=True")
+      rescale = tf.divide(1.0, y_normalizer.variance)
+    elif self.config.loss_rescaling_method != "none":
+      raise ValueError(self.config.loss_rescaling_method)
+
+    # Loss shifting.
+    shift = self.config.loss_shift or None
+
+    # Create loss function.
+
     if loss_name == "log_likelihood":
       return losses.LogLikelihood()
 
-    # Unweighted loss functions.
-
     if loss_name == "mean_squared_error":
-      return losses.MeanSquaredError()
+      return losses.MeanSquaredError(rescale=rescale, shift=shift)
 
     if loss_name == "mean_squared_log_error":
-      return losses.MeanSquaredLogError()
+      return losses.MeanSquaredLogError(rescale=rescale, shift=shift)
 
     if loss_name == "mean_absolute_error":
-      return losses.MeanAbsoluteError()
+      return losses.MeanAbsoluteError(rescale=rescale, shift=shift)
 
     if loss_name == "mean_relative_error":
-      return losses.MeanRelativeError()
-
-    # Weighted loss functions.
-
-    if not self.config.normalize_y:
-      raise ValueError(f"loss='{loss_name}' requires normalize_y=True")
-
-    if not self.y_transformer.is_fit:
-      raise ValueError(
-          "Must call y_transformer.fit() before creating weighted loss")
-
-    y_normalizer = self.y_transformer.layers[-1]
-    assert isinstance(y_normalizer, transformers.Normalizer)
-    class_weights = tf.divide(1.0, y_normalizer.variance)
-
-    if loss_name == "weighted_mean_squared_error":
-      return losses.WeightedMeanSquaredError(class_weights)
-
-    if loss_name == "weighted_mean_squared_log_error":
-      return losses.WeightedMeanSquaredLogError(class_weights)
+      return losses.MeanRelativeError(rescale=rescale, shift=shift)
 
     raise ValueError(f"Unrecognized loss function: {loss_name}")
 
