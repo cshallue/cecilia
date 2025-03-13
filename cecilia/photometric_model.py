@@ -33,7 +33,8 @@ class LearnedScale(keras.layers.Layer):
     )
 
   def call(self, loc):
-    scale = tf.broadcast_to(self._scale_params, tf.shape(loc))
+    scale = tf.math.softplus(self._scale_params)
+    scale = tf.broadcast_to(scale, tf.shape(loc))
     return {"Normal_loc": loc, "Normal_scale": scale}
 
 
