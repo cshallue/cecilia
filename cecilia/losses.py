@@ -23,10 +23,10 @@ class ScaledShiftedLossFn(keras.losses.Loss):
   def call(self, y_true, y_pred):
     losses = self.loss_fn(y_true, y_pred)
     if self.rescale is not None:
-      rescale = tf.convert_to_tensor(self.rescale, dtype=y_pred.dtype)
+      rescale = tf.convert_to_tensor(self.rescale, dtype=losses.dtype)
       losses *= rescale
     if self.shift is not None:
-      shift = tf.convert_to_tensor(self.shift, dtype=y_pred.dtype)
+      shift = tf.convert_to_tensor(self.shift, dtype=losses.dtype)
       losses += shift
 
     return tf.reduce_mean(losses, axis=-1)
