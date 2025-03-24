@@ -1,16 +1,18 @@
+import abc
 import itertools
 
 import numpy as np
 from tensorboard.plugins.hparams import api as hp
 
 
-class SearchSpaceAxis:
+class SearchSpaceAxis(abc.ABC):
 
+  @abc.abstractmethod
   def tensorboard_spec(self):
-    raise NotImplementedError
+    ...
 
 
-class SearchSpace:
+class SearchSpace(abc.ABC):
 
   def __init__(self):
     self.axes = {}
@@ -21,8 +23,9 @@ class SearchSpace:
         for name, ax in self.axes.items()
     ]
 
+  @abc.abstractmethod
   def search(self):
-    return NotImplementedError
+    ...
 
 
 # Random search
@@ -33,8 +36,9 @@ class RandomParam(SearchSpaceAxis):
   def __init__(self, rng):
     self.rng = rng
 
+  @abc.abstractmethod
   def sample(self):
-    raise NotImplementedError
+    ...
 
 
 class DiscreteParam(RandomParam):
