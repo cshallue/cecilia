@@ -96,7 +96,7 @@ class RandomSearchSpace(SearchSpace):
   def add_log_uniform_param(self, name, low, high):
     self.add_axis(name, LogUniformParam(self.rng, low, high))
 
-  def search(self, n=None):
+  def search(self):
     while True:
       yield {name: ax.sample() for name, ax in self.axes.items()}
 
@@ -125,7 +125,7 @@ class GridSearchSpace(SearchSpace):
   def add_axis(self, name, values, tb_type="discrete"):
     self.axes[name] = GridSearchAxis(values, tb_type)
 
-  def search(self, n=None):
+  def search(self):
     for gridpoint in itertools.product(*(ax.values
                                          for ax in self.axes.values())):
       yield {name: value for name, value in zip(self.axes.keys(), gridpoint)}
