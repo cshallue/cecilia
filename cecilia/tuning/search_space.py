@@ -1,3 +1,5 @@
+"""Classes defining hyperparameter search spaces."""
+
 import abc
 import itertools
 
@@ -6,25 +8,27 @@ from tensorboard.plugins.hparams import api as hp
 
 
 class SearchSpaceAxis(abc.ABC):
+  """Base class for an axis of the search space (e.g. a hyperparameter)."""
 
   @abc.abstractmethod
-  def tensorboard_spec(self):
+  def get_domain(self):
+    """Returns a hp.Domain object describing the domain of the axis."""
     ...
 
 
 class SearchSpace(abc.ABC):
+  """Base class for a search space."""
 
   def __init__(self):
     self.axes = {}
 
   def get_tensorboard_specs(self):
-    return [
-        hp.HParam(name, ax.tensorboard_spec())
-        for name, ax in self.axes.items()
-    ]
+    """Returns a list of hp.HParam objects for all axes in the search space."""
+    return [hp.HParam(name, ax.get_domain()) for name, ax in self.axes.items()]
 
   @abc.abstractmethod
   def search(self):
+    """Returns an iterator over the search space."""
     ...
 
 
@@ -32,16 +36,19 @@ class SearchSpace(abc.ABC):
 
 
 class RandomParam(SearchSpaceAxis):
+  """A parameter whose value is sampled randomly."""
 
   def __init__(self, rng):
     self.rng = rng
 
   @abc.abstractmethod
   def sample(self):
+    """Samples a single value from the domain."""
     ...
 
 
 class DiscreteParam(RandomParam):
+  """A parameter whose value is sampled randomly from a discrete set."""
 
   def __init__(self, rng, values):
     super().__init__(rng)
@@ -50,28 +57,31 @@ class DiscreteParam(RandomParam):
   def sample(self):
     return self.rng.choice(self.values)
 
-  def tensorboard_spec(self):
+  def get_domain(self):
     return hp.Discrete(self.values)
 
 
 class RealParam(RandomParam):
+  """A parameter whose value is sampled randomly from a real interval."""
 
   def __init__(self, rng, low, high):
     super().__init__(rng)
     self.low = low
     self.high = high
 
-  def tensorboard_spec(self):
+  def get_domain(self):
     return hp.RealInterval(self.low, self.high)
 
 
 class UniformParam(RealParam):
+  """A parameter whose value is sampled uniformly from a real interval."""
 
   def sample(self):
     return self.rng.uniform(self.low, self.high)
 
 
 class LogUniformParam(RealParam):
+  """A parameter whose logarithm is sampled randomly from a real interval."""
 
   def sample(self):
     log_x = self.rng.uniform(np.log(self.low), np.log(self.high))
@@ -79,6 +89,7 @@ class LogUniformParam(RealParam):
 
 
 class RandomSearchSpace(SearchSpace):
+  """A random search space."""
 
   def __init__(self, rng=None):
     super().__init__()
@@ -109,12 +120,13 @@ class RandomSearchSpace(SearchSpace):
 
 
 class GridSearchAxis(SearchSpaceAxis):
+  """An axis in a grid search space."""
 
   def __init__(self, values, tb_type):
     self.values = values
     self.tb_type = tb_type
 
-  def tensorboard_spec(self):
+  def get_domain(self):
     if self.tb_type == "discrete":
       return hp.Discrete(self.values)
 
@@ -125,6 +137,7 @@ class GridSearchAxis(SearchSpaceAxis):
 
 
 class GridSearchSpace(SearchSpace):
+  """A grid search space."""
 
   def add_axis(self, name, values, tb_type="discrete"):
     self.axes[name] = GridSearchAxis(values, tb_type)
