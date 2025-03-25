@@ -10,89 +10,36 @@ from cecilia import losses
 from cecilia.preprocessing import transformers
 
 
-class ConstantScale(keras.layers.Layer):
-
-  def __init__(self, scale, **kwargs):
-    super().__init__(**kwargs)
-    self.scale = tf.convert_to_tensor(scale, dtype=tf.float32)
-
-  def call(self, loc):
-    scale = tf.broadcast_to(self.scale, tf.shape(loc))
-    return {"Normal_loc": loc, "Normal_scale": scale}
-
-
-class LearnedScale(keras.layers.Layer):
-
-  def build(self, input_shape):
-    input_dim = input_shape[-1]
-    # scale is softplus(_scale_params).
-    self._scale_params = self.add_weight(
-        name="scale_params",
-        shape=(input_dim, ),
-        initializer=keras.initializers.Zeros(),
-    )
-
-  def call(self, loc):
-    scale = tf.math.softplus(self._scale_params)
-    scale = tf.broadcast_to(scale, tf.shape(loc))
-    return {"Normal_loc": loc, "Normal_scale": scale}
-
-
-class DenseLocScale(keras.layers.Layer):
-
-  def __init__(self, output_dim, **kwargs):
-    super().__init__(**kwargs)
-    self._dense = keras.layers.Dense(2 * output_dim)
-
-  def build(self, input_shape):
-    self._dense.build(input_shape)
-
-  def call(self, input):
-    loc_scale = self._dense.call(input)
-    loc, scale = tf.split(loc_scale, 2, axis=-1)
-    scale = tf.math.softplus(scale)
-    return {"Normal_loc": loc, "Normal_scale": scale}
-
-
 class PhotometricModel(keras.Model):
 
   def __init__(self, config, **kwargs):
     super().__init__(**kwargs)
     self.config = config
 
-    # Input transformer.
-    x_transformer = transformers.create_pipeline(normalize=config.normalize_x)
-
-    # Fully connected layers.
-    fc_layers = []
-    for _ in range(config.n_hidden):
-      fc_layers.append(
-          keras.layers.Dense(config.dim_hidden, config.hidden_activation))
-
-    if config.predict_std_method == "dense":
-      fc_layers.append(DenseLocScale(config.dim_output))
-    else:
-      fc_layers.append(keras.layers.Dense(config.dim_output))
-      if config.predict_std_method == "constant":
-        fc_layers.append(ConstantScale(config.predict_constant_std_value))
-      elif config.predict_std_method == "per_class":
-        fc_layers.append(LearnedScale())
-      elif config.predict_std_method != "none":
-        raise ValueError(config.predict_std_method)
-
-    # Output transformer.
-    y_transformer = transformers.create_pipeline(
+    # Construct the layers.
+    self.x_transformer = transformers.create_pipeline(
+        normalize=config.normalize_x)
+    self.hidden_layers = self.construct_hidden_layers()
+    self.output_layers = self.construct_output_layers()
+    self.y_transformer = transformers.create_pipeline(
         log_transform=config.log_transform_y,
         normalize=config.normalize_y,
         invert=True)
 
-    self.x_transformer = x_transformer
-    self.fc_layers = fc_layers
-    self.y_transformer = y_transformer
-
     # We know the input dimension so we might as well build now.
     self.build(input_shape=(None, config.dim_input))
     self.loss_fn = None
+
+  def construct_hidden_layers(self):
+    layers = []
+    for _ in range(self.config.n_hidden):
+      layers.append(
+          keras.layers.Dense(self.config.dim_hidden,
+                             self.config.hidden_activation))
+    return layers
+
+  def construct_output_layers(self):
+    return [keras.layers.Dense(self.config.dim_output)]
 
   def build(self, input_shape):
     input_layer = keras.Input(shape=(input_shape[-1], ))
@@ -101,7 +48,8 @@ class PhotometricModel(keras.Model):
 
   def call(self, inputs):
     x = self.x_transformer(inputs)
-    for layer in self.fc_layers:
+    layers = self.hidden_layers + self.output_layers
+    for layer in layers:
       x = layer(x)
     return self.y_transformer(x)
 
@@ -133,10 +81,6 @@ class PhotometricModel(keras.Model):
 
   def _build_loss_fn(self):
     loss_name = self.config.loss
-    predicts_distribution = (self.config.predict_std_method != "none")
-    if predicts_distribution != (loss_name == "log_likelihood"):
-      raise ValueError(
-          "Must have loss='log_likelihood' iff predicting a distribution")
 
     # Loss rescaling.
     shift = self.config.loss_shift or None
@@ -149,24 +93,10 @@ class PhotometricModel(keras.Model):
         raise ValueError("loss_rescaling_method='per_class_variance' requires "
                          "normalize_y=True")
       rescale = tf.divide(1.0, y_normalizer.variance)
-    elif self.config.loss_rescaling_method == 'log_likelihood_rescaling':
-      # There is a factor of 1/2 in the log likelihood that is not included in
-      # the squared error. So rescale by a factor of 2.
-      rescale = 2.0
-      # Shift away constant factors.
-      if shift:
-        raise ValueError("loss_shift cannot be used in conjunction with "
-                         "log_likelihood_rescaling")
-      shift = -tf.math.log(2 * math.pi)
-      if y_normalizer is not None:
-        shift -= tf.reduce_mean(tf.math.log(y_normalizer.variance))
     elif self.config.loss_rescaling_method != "none":
       raise ValueError(self.config.loss_rescaling_method)
 
     # Create loss function.
-
-    if loss_name == "log_likelihood":
-      return losses.LogLikelihood(rescale=rescale, shift=shift)
 
     if loss_name == "mean_squared_error":
       return losses.MeanSquaredError(rescale=rescale, shift=shift)
