@@ -10,10 +10,10 @@ from tensorboard.plugins.hparams import api as hp
 class SearchSpaceAxis(abc.ABC):
   """Base class for an axis of the search space (e.g. a hyperparameter)."""
 
+  @property
   @abc.abstractmethod
-  def get_domain(self):
+  def domain(self):
     """Returns a hp.Domain object describing the domain of the axis."""
-    ...
 
 
 class SearchSpace(abc.ABC):
@@ -24,12 +24,11 @@ class SearchSpace(abc.ABC):
 
   def get_tensorboard_specs(self):
     """Returns a list of hp.HParam objects for all axes in the search space."""
-    return [hp.HParam(name, ax.get_domain()) for name, ax in self.axes.items()]
+    return [hp.HParam(name, ax.domain) for name, ax in self.axes.items()]
 
   @abc.abstractmethod
   def search(self):
     """Returns an iterator over the search space."""
-    ...
 
 
 # Random search
@@ -44,7 +43,6 @@ class RandomParam(SearchSpaceAxis):
   @abc.abstractmethod
   def sample(self):
     """Samples a single value from the domain."""
-    ...
 
 
 class DiscreteParam(RandomParam):
@@ -53,37 +51,56 @@ class DiscreteParam(RandomParam):
   def __init__(self, rng, values):
     super().__init__(rng)
     self.values = values
+    self._domain = hp.Discrete(self.values)
 
   def sample(self):
     return self.rng.choice(self.values)
 
-  def get_domain(self):
-    return hp.Discrete(self.values)
+  @property
+  def domain(self):
+    return self._domain
 
 
-class RealParam(RandomParam):
-  """A parameter whose value is sampled randomly from a real interval."""
+class ContiguousParam(RandomParam):
+  """A parameter whose value is sampled randomly from an interval."""
 
-  def __init__(self, rng, low, high):
+  def __init__(self, rng, low, high, integer_valued=False):
     super().__init__(rng)
     self.low = low
     self.high = high
+    self.integer_valued = integer_valued
+    if integer_valued:
+      # Conventionally, integer intervals are inclusive on both sides while real
+      # intervals are exclusive at the upper end.
+      self.high += 1
+      self._domain = hp.IntInterval(self.low, self.high)
+    else:
+      self._domain = hp.RealInterval(self.low, self.high)
 
-  def get_domain(self):
-    return hp.RealInterval(self.low, self.high)
+  @property
+  def domain(self):
+    return self._domain
 
-
-class UniformParam(RealParam):
-  """A parameter whose value is sampled uniformly from a real interval."""
+  @abc.abstractmethod
+  def _sample_real(self):
+    """Samples a real value."""
 
   def sample(self):
+    value = self._sample_real()
+    return int(value) if self.integer_valued else value
+
+
+class UniformParam(ContiguousParam):
+  """A parameter whose value is sampled uniformly from an interval."""
+
+  def _sample_real(self):
     return self.rng.uniform(self.low, self.high)
 
 
-class LogUniformParam(RealParam):
-  """A parameter whose logarithm is sampled randomly from a real interval."""
+class LogUniformParam(ContiguousParam):
+  """A parameter whose logarithm is sampled randomly from an interval."""
 
-  def sample(self):
+  def _sample_real(self):
     log_x = self.rng.uniform(np.log(self.low), np.log(self.high))
     return np.exp(log_x)
 
@@ -105,15 +122,21 @@ class RandomSearchSpace(SearchSpace):
   def add_discrete_param(self, name, values):
     self.add_axis(name, DiscreteParam(self.rng, values))
 
-  def add_uniform_param(self, name, low, high):
-    self.add_axis(name, UniformParam(self.rng, low, high))
+  def add_uniform_param(self, name, low, high, integer_valued=False):
+    self.add_axis(name, UniformParam(self.rng, low, high, integer_valued))
 
-  def add_log_uniform_param(self, name, low, high):
-    self.add_axis(name, LogUniformParam(self.rng, low, high))
+  def add_log_uniform_param(self, name, low, high, integer_valued=False):
+    self.add_axis(name, LogUniformParam(self.rng, low, high, integer_valued))
 
   def search(self):
     while True:
-      yield {name: ax.sample() for name, ax in self.axes.items()}
+      point = {}
+      for name, ax in self.axes.items():
+        value = ax.sample()
+        if isinstance(value, np.integer):
+          value = int(value)  # Convert from numpy integer to int
+        point[name] = value
+      yield point
 
 
 # Grid search
@@ -125,15 +148,15 @@ class GridSearchAxis(SearchSpaceAxis):
   def __init__(self, values, tb_type):
     self.values = values
     self.tb_type = tb_type
+    if tb_type == "discrete":
+      self._domain = hp.Discrete(values)
+    elif tb_type == "continuous":
+      self._domain = hp.RealInterval(np.min(values), np.max(values))
+    else:
+      raise ValueError(tb_type)
 
-  def get_domain(self):
-    if self.tb_type == "discrete":
-      return hp.Discrete(self.values)
-
-    if self.tb_type == "continuous":
-      return hp.RealInterval(np.min(self.values), np.max(self.values))
-
-    raise ValueError(self.tb_type)
+  def domain(self):
+    return self._domain
 
 
 class GridSearchSpace(SearchSpace):
