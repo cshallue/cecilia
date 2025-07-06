@@ -30,6 +30,11 @@ class SearchSpace(abc.ABC):
   def search(self):
     """Returns an iterator over the search space."""
 
+  @classmethod
+  @abc.abstractmethod
+  def from_config(cls, config):
+    """Creates a search space from a configuration object."""
+
 
 # Random search
 
@@ -138,6 +143,34 @@ class RandomSearchSpace(SearchSpace):
         point[name] = value
       yield point
 
+  @classmethod
+  def from_config(cls, config):
+    ss = cls()
+    for param_spec in config.parameters:
+      name = param_spec.parameter
+      if param_spec.type == "CATEGORICAL":
+        ss.add_discrete_param(name,
+                              param_spec.categorical_value_spec["values"])
+      elif param_spec.type in {"INTEGER", "DOUBLE"}:
+        if param_spec.type == "INTEGER":
+          integer_valued = True
+          low = param_spec.integer_value_spec.min_value
+          high = param_spec.integer_value_spec.max_value
+        elif param_spec.type == "DOUBLE":
+          integer_valued = False
+          low = param_spec.double_value_spec.min_value
+          high = param_spec.double_value_spec.max_value
+        scale_type = param_spec.get("scale_type", "UNIT_LOG_SCALE")
+        if scale_type == "UNIT_LOG_SCALE":
+          ss.add_log_uniform_param(name, low, high, integer_valued)
+        elif scale_type == "UNIT_LINEAR_SCALE":
+          ss.add_uniform_param(name, low, high, integer_valued)
+        else:
+          raise ValueError(scale_type)
+      else:
+        raise ValueError(param_spec.type)
+    return ss
+
 
 # Grid search
 
@@ -155,6 +188,7 @@ class GridSearchAxis(SearchSpaceAxis):
     else:
       raise ValueError(tb_type)
 
+  @property
   def domain(self):
     return self._domain
 
@@ -169,3 +203,23 @@ class GridSearchSpace(SearchSpace):
     for gridpoint in itertools.product(*(ax.values
                                          for ax in self.axes.values())):
       yield {name: value for name, value in zip(self.axes.keys(), gridpoint)}
+
+  @classmethod
+  def from_config(cls, config):
+    ss = cls()
+    for param_spec in config.parameters:
+      if param_spec["type"] != "CATEGORICAL":
+        raise ValueError(param_spec.type)
+      ss.add_axis(name=param_spec["parameter"],
+                  values=param_spec["categorical_value_spec"]["values"],
+                  tb_type=param_spec.get("tb_type", "discrete"))
+    return ss
+
+
+def from_config(config):
+  """Creates a search space from a configuration object."""
+  if config.method == "random_search":
+    return RandomSearchSpace.from_config(config)
+  if config.method == "grid_search":
+    return GridSearchSpace.from_config(config)
+  raise ValueError(config.method)

@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def apply_scaler(train_arr, test_arr, scaler):
   train_arr = scaler.fit_transform(train_arr)
   test_arr = scaler.transform(test_arr)
@@ -21,4 +24,8 @@ def extract_features_targets(train_df,
     Y_train, Y_test = apply_scaler(Y_train, Y_test, y_scaler)
     print("Re-scaled y's")
 
+  X_train = X_train.astype(np.float32)
+  Y_train = Y_train.astype(np.float32)
+  X_test = X_test.astype(np.float32)
+  Y_test = Y_test.astype(np.float32)
   return X_train, Y_train, X_test, Y_test

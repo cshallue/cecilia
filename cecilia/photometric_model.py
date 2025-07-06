@@ -5,7 +5,7 @@ import ml_collections
 import tensorflow as tf
 from tensorflow import keras
 
-from cecilia import losses
+from cecilia import configuration, losses
 from cecilia.preprocessing import transformers
 
 
@@ -123,9 +123,7 @@ class PhotometricModel(keras.Model):
 
 
 def load(model_dir):
-  with open(os.path.join(model_dir, "config.json"), "r") as f:
-    config = ml_collections.ConfigDict(json.load(f))
-
+  config = configuration.load(model_dir)
   model = PhotometricModel(config)
 
   weights_filename = os.path.join(model_dir, "model.weights.h5")

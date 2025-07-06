@@ -3,7 +3,7 @@ import shutil
 
 import pandas as pd
 
-from cecilia import evaluation, photometric_model, preprocessing
+from cecilia import configuration, evaluation, photometric_model, preprocessing
 from cecilia.data import tf_dataset
 
 
@@ -25,9 +25,7 @@ def train_model(config,
       raise ValueError(f"Output directory exists: {output_dir}")
 
   # Write config.
-  os.makedirs(output_dir)
-  with open(os.path.join(output_dir, "config.json"), "w") as f:
-    f.write(config.to_json(indent=2))
+  configuration.save(config, output_dir)
 
   # Extract features and targets.
   X_train, Y_train, X_test, Y_test = preprocessing.extract_features_targets(
