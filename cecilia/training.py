@@ -1,6 +1,7 @@
 import os
 import shutil
 
+import numpy as np
 import pandas as pd
 
 from cecilia import configuration, evaluation, photometric_model, preprocessing
@@ -30,12 +31,14 @@ def train_model(config,
   # Extract features and targets.
   X_train, Y_train, X_test, Y_test = preprocessing.extract_features_targets(
       train_df, test_df, X_cols, Y_cols)
+  steps_per_epoch = int(np.ceil(len(X_train) / config.batch_size))
+  print(f"Steps per epoch: {steps_per_epoch}")
 
   # Build and compile model.
   model = photometric_model.PhotometricModel(config)
   model.x_transformer.fit(X_train)
   model.y_transformer.fit(Y_train)
-  model.compile()
+  model.compile(steps_per_epoch=steps_per_epoch)
 
   # Create batched dataset iterators.
   train_dataset = tf_dataset.build(X_train,

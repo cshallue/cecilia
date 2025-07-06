@@ -42,6 +42,8 @@ def default():
       "loss_rescaling_value": [],
       "loss_shift": [],
       "learning_rate": 1e-3,
+      "learning_rate_schedule": "constant",
+      "learning_rate_decay_alpha": 0.0,
       "momentum": 0.9,
       "num_epochs": 20,
       "batch_size": 512,

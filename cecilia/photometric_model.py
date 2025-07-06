@@ -1,7 +1,5 @@
-import json
 import os
 
-import ml_collections
 import tensorflow as tf
 from tensorflow import keras
 
@@ -111,12 +109,26 @@ class PhotometricModel(keras.Model):
 
     raise ValueError(f"Unrecognized loss function: {loss_name}")
 
-  def compile(self, **kwargs):
+  def compile(self, steps_per_epoch=None, **kwargs):
     # Build the loss function
     self.loss_fn = self._build_loss_fn()
 
     # Build the optimizer.
-    lr = self.config.learning_rate
+    if self.config.learning_rate_schedule == "constant":
+      lr = self.config.learning_rate
+    elif self.config.learning_rate_schedule == "cosine":
+      assert steps_per_epoch is not None
+      initial_learning_rate = self.config.learning_rate
+      decay_steps = self.config.num_epochs * steps_per_epoch
+      alpha = self.config.learning_rate_decay_alpha
+      print(f"Cosine learning rate decay: {initial_learning_rate=}, "
+            f"{decay_steps=}, {alpha=}")
+      lr = keras.optimizers.schedules.CosineDecay(initial_learning_rate,
+                                                  decay_steps=decay_steps,
+                                                  alpha=alpha)
+    else:
+      raise ValueError(
+          f"Unrecognized decay schedule: {self.config.learning_rate_schedule}")
     momentum = self.config.momentum
     optimizer = keras.optimizers.SGD(learning_rate=lr, momentum=momentum)
     super().compile(optimizer=optimizer, **kwargs)
