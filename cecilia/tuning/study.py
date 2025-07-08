@@ -76,6 +76,11 @@ def run_tuning_study(study_config,
       if name.startswith("one_minus_"):
         name = name[len("one_minus_"):]
         value = 1.0 - value
+      if "_X_" in name:
+        name, param2 = name.split("_X_")
+        # In order to specify param1_X_param2, param2 must appear in
+        # base_param_overrides or in the search space before param1.
+        value = value / trial_params[param2]
       trial_params[name] = value
     print("Params:", trial_params)
 
