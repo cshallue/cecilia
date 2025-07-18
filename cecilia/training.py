@@ -16,6 +16,7 @@ def train_model(config,
                 output_dir,
                 run_eval=True,
                 save_model=True,
+                save_eval_tables=False,
                 overwrite=False,
                 callbacks=None):
   if os.path.exists(output_dir):
@@ -75,6 +76,10 @@ def train_model(config,
   Y_pred_train = model.predict(X_train, batch_size=config.batch_size)
   Y_pred_test = model.predict(X_test, batch_size=config.batch_size)
   datasets = {"train": (Y_train, Y_pred_train), "test": (Y_test, Y_pred_test)}
+  if save_eval_tables:
+    for name, (Y, Y_pred) in datasets.items():
+      Y.to_csv(os.path.join(output_dir, f"Y_{name}.csv"))
+      Y_pred.to_csv(os.path.join(output_dir, f"Y_pred_{name}.csv"))
   eval_results = evaluation.calc_metrics_df(datasets=datasets)
   for name, df in eval_results.items():
     df.to_csv(os.path.join(output_dir, f"metrics_{name}.csv"))

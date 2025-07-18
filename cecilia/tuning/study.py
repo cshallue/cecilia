@@ -33,7 +33,8 @@ def run_tuning_study(study_config,
                      study_dir,
                      n_trials=None,
                      overwrite=False,
-                     save_models=False):
+                     save_models=False,
+                     save_eval_tables=False):
   if os.path.exists(study_dir):
     if overwrite:
       print(f"Removing existing output directory: {study_dir}")
@@ -89,13 +90,15 @@ def run_tuning_study(study_config,
     config.update(trial_params)
 
     # Run the trial.
-    history, eval_results = training.train_model(config,
-                                                 train_df,
-                                                 test_df,
-                                                 X_cols,
-                                                 Y_cols,
-                                                 trial_dir,
-                                                 save_model=save_models)
+    history, eval_results = training.train_model(
+        config,
+        train_df,
+        test_df,
+        X_cols,
+        Y_cols,
+        trial_dir,
+        save_model=save_models,
+        save_eval_tables=save_eval_tables)
 
     # Log to Tensorboard.
     with tf.summary.create_file_writer(trial_dir).as_default():
