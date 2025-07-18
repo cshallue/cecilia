@@ -77,9 +77,14 @@ def train_model(config,
   Y_pred_test = model.predict(X_test, batch_size=config.batch_size)
   datasets = {"train": (Y_train, Y_pred_train), "test": (Y_test, Y_pred_test)}
   if save_eval_tables:
-    for name, (Y, Y_pred) in datasets.items():
-      Y.to_csv(os.path.join(output_dir, f"Y_{name}.csv"))
-      Y_pred.to_csv(os.path.join(output_dir, f"Y_pred_{name}.csv"))
+    for name, data in [
+        ("Y_train", Y_train),
+        ("Y_pred_train", Y_pred_train),
+        ("Y_test", Y_test),
+        ("Y_pred_test", Y_pred_test),
+    ]:
+      filename = os.path.join(output_dir, f"{name}.csv")
+      pd.DataFrame(data, columns=Y_cols).to_csv(filename, index=False)
   eval_results = evaluation.calc_metrics_df(datasets=datasets)
   for name, df in eval_results.items():
     df.to_csv(os.path.join(output_dir, f"metrics_{name}.csv"))
