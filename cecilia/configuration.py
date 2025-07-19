@@ -26,25 +26,25 @@ def default():
   return ml_collections.ConfigDict({
       # Data.
       "normalize_x": True,
-      "log_transform_y": False,
+      "log_transform_y": True,
       "normalize_y": True,
       # Model.
       "dim_input": 17,
       "n_hidden": 2,
-      "dim_hidden": 1024,
+      "dim_hidden": 2048,
       "hidden_activation": "relu",
       "dim_output": 16,
       "predict_std_method": "none",
       "predict_constant_std_value": 1.0,
       # Training.
-      "loss": "mean_squared_error",
+      "loss": "mean_squared_log_error",
       "loss_rescaling_method": "none",
       "loss_rescaling_value": [],
       "loss_shift": [],
-      "learning_rate": 1e-3,
-      "learning_rate_schedule": "constant",
-      "learning_rate_decay_alpha": 0.0,
+      "learning_rate": 0.1,
+      "learning_rate_schedule": "cosine",
+      "learning_rate_decay_alpha": 0.01,
       "momentum": 0.9,
-      "num_epochs": 20,
+      "num_epochs": 100,
       "batch_size": 512,
   })
